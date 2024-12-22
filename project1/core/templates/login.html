@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="login-form">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="/register">Register</a></p>
+      <div id="message" style="color: red;"></div>
+     <script>
+         document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+            
+            const form = event.target;
+            const username = form.username.value;
+            const password = form.password.value;
+            fetch('/api/login/',{
+                    method:'POST',
+                    headers: {
+                            'Content-Type': 'application/json',
+                    },
+                    body:JSON.stringify({username:username,password:password})
+            })
+            .then(response=>response.json())
+            .then(data=>{
+              document.getElementById('message').textContent = data.message;
+              if(data.status==200){
+                  document.getElementById('login-form').reset();
+                  localStorage.setItem('access_token',data.access)
+                  localStorage.setItem('refresh_token',data.refresh)
+                    window.location.href = '/transfer'; // Redirect to transfer
+              }
+            })
+              .catch(error=>{
+               document.getElementById('message').textContent = "Failed to send request.";
+                console.error('Error:', error)
+              });
+        });
+     </script>
+</body>
+</html>

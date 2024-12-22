@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfer</title>
+</head>
+<body>
+    <h2>Make a Transfer</h2>
+    <form id="transfer-form">
+        <div>
+            <label for="receiver_username">Receiver Username:</label>
+            <input type="text" id="receiver_username" name="receiver_username" required>
+        </div>
+        <div>
+            <label for="amount">Amount:</label>
+            <input type="number" id="amount" name="amount" required>
+        </div>
+        <button type="submit">Transfer</button>
+    </form>
+    <button type="button" id="logout-button" >Logout</button>
+    <div id="message" style="color: red;"></div>
+    <script>
+        document.getElementById('logout-button').addEventListener('click', function(event) {
+              const refresh = localStorage.getItem('refresh_token');
+              const accessToken = localStorage.getItem('access_token');
+  
+              console.log("Logout initiated. Refresh Token:", refresh, "Access Token", accessToken);
+  
+               fetch('/api/logout/', {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                           'Authorization': 'Bearer ' + accessToken
+                      },
+                      body: JSON.stringify({ refresh: refresh })
+                   })
+              .then(response => {
+                      console.log("Raw Response:", response);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                     }
+                     if (response.status === 205){
+                          localStorage.clear();
+                          window.location.href = '/login/';
+                      }
+                      return response.json();
+                })
+                  .then(data => {
+                      console.log("Response Data:", data);
+                      if (data.message === "Logout successfully") {
+                          localStorage.clear();
+                          window.location.href = '/login/';
+                      } else {
+                           document.getElementById('message').textContent = data.message;
+                       }
+                  })
+                  .catch(error => {
+                        console.error("Fetch Error:", error);
+                        document.getElementById('message').textContent = "Failed to send request.";
+                  });
+          });
+  
+          document.getElementById('transfer-form').addEventListener('submit', function(event) {
+              event.preventDefault(); // Prevent default form submission
+              const form = event.target;
+              const receiver_username = form.receiver_username.value;
+              const amount = form.amount.value;
+              fetch('/api/transfer/', {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                      },
+                      body: JSON.stringify({
+                          receiver_username: receiver_username,
+                          amount: amount
+                      })
+                   })
+                  .then(response => response.json())
+                  .then(data => {
+                      document.getElementById('message').textContent = data.message;
+                       if (data.status == 200) {
+                          document.getElementById('transfer-form').reset();
+                      }
+                  })
+                 .catch(error => {
+                      document.getElementById('message').textContent = "Failed to send request.";
+                       console.error('Error:', error);
+                   });
+          });
+      </script>
+</body>
+</html>
