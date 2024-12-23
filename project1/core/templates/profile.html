@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+</head>
+<body class="bg-slate-200">
+    <section class="mt-20 w-1/3 mx-auto">
+        <div class=" bg-emerald-500 rounded-t-xl">
+            <div class="px-8 py-6 flex space-x-4 text-white">
+                <a href="{% url 'home_page' %}"><i class="ph-bold ph-arrow-left text-4xl hover:text-yellow-500"></i></a>
+                <p class="my-auto font-semibold tracking-wider">Profile</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-b-xl pb-8">
+            <div class="">
+                <div class="flex flex-col items-center p-4">
+                    <i class="ph ph-user-circle text-8xl text-emerald-600"></i>
+                    <p class="font-semibold text-2xl" id="profile-username"></p>
+                    <p class="mt-4 py-1 px-3 rounded-full font-semibold text-sm bg-slate-100 text-emerald-900" id="profile-account-number"></p>
+                    
+                </div>
+            </div>
+            <div class="flex justify-center">
+                <button id="logout-button" class="mt-4 py-2 px-4 rounded-full font-semibold bg-red-500 text-white hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </section>
+    <script>
+        document.addEventListener('DOMContentLoaded', function(){
+                const usernameSpan = document.getElementById('profile-username');
+                const accountNumberSpan = document.getElementById('profile-account-number');
+                 const bank_account_str = localStorage.getItem('bank_account')
+                 const username = localStorage.getItem('username')
+                if(username && usernameSpan){
+                   usernameSpan.textContent = username;
+                 }
+
+              if(bank_account_str && accountNumberSpan){
+                try{
+                    const bank_account = JSON.parse(bank_account_str)
+                    accountNumberSpan.textContent = bank_account.account_number;
+                } catch(error){
+                     console.error("Failed to retrieve bank account", error)
+                  }
+               }
+          });
+        document.getElementById('logout-button').addEventListener('click', function(event) {
+            const refresh = localStorage.getItem('refresh_token')
+            fetch('/api/logout/',{
+                 method:'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'Authorization':'Bearer ' + localStorage.getItem('access_token')
+                    },
+                body:JSON.stringify({refresh:refresh})
+                })
+               .then(response => {
+                     if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                     }
+                      if(response.status === 205){
+                         localStorage.clear();
+                        window.location.href='/login/';
+                      }
+                     return response.json();
+                  })
+               .then(data => {
+                     if (data.message === "Logout successfully") {
+                        localStorage.clear();
+                         window.location.href='/login/';
+                    } else{
+                         document.getElementById('message').textContent = data.message;
+                    }
+               })
+               .catch(error=>{
+                    document.getElementById('message').textContent = "Failed to send request.";
+                     console.error('Error:', error)
+                });
+           })
+    </script>
+</body>
+</html>
