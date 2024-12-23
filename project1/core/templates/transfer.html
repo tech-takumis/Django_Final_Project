@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transfer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+  <style>
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-200">
+  <section class="mt-20 w-1/3 mx-auto">
+    <div class=" bg-emerald-500 rounded-t-xl">
+      <div class="px-8 py-6 flex space-x-4 text-white">
+        <a href="{% url 'home_page' %}"><i class="ph-bold ph-arrow-left text-4xl hover:text-yellow-500"></i></a>
+        <p class="my-auto font-semibold tracking-wider"> Fund Transfer</p>
+      </div>
+    </div>
+    <div class="bg-white rounded-b-xl pb-8">
+      <form id="transfer-form" class="px-8 py-6 bg-white w-full">
+        <div class="">
+          <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center p-1 pl-3">₱</span>
+            <input type="text" id="amount" name="amount" class="pl-6 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="0.00" onblur="formatAmount(this)" onfocus="revertAmount(this)" oninput="validateAmount(this)" step="0.01" required>
+          </div>
+          <p class="mt-2 text-xs">Available Balance: ₱<span id="balance">0000.00</span></p>
+        </div>
+        <div class="mt-4">
+          <label for="account-name" class="block text-sm font-medium text-gray-700">Account Name</label>
+          <input type="text" id="account-name" name="account-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="Max of 50 Characters" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
+        </div>
+        <div class="mt-4">
+          <label for="account-number" class="block text-sm font-medium text-gray-700">Account Number</label>
+          <input type="number" id="account-number" name="account-number" maxlength="12" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="12 Digits" required>
+        </div>
+        <div class="py-2">
+          <button type="submit" class="mt-4 bg-emerald-500 text-white py-2 w-full rounded-md hover:bg-emerald-600 hover:text-yellow-500">Transfer</button>
+        </div>
+        <div id="message" style="color: red;"></div>
+      </form>
+    </div>
+  </section>
+  <script>
+    function formatAmount(input) {
+      if (input.value.trim() === "") return;
+      let value = parseFloat(input.value.replace(/,/g, ''));
+      if (!isNaN(value)) {
+        input.value = value.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const bank_account_str = localStorage.getItem('bank_account')
+      if (bank_account_str) {
+        const bank_account = JSON.parse(bank_account_str);
+        document.getElementById('balance').textContent = parseFloat(bank_account.balance).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+    })
+
+    function revertAmount(input) {
+      input.value = input.value.replace(/,/g, '');
+    }
+
+    function validateAmount(input) {
+      input.value = input.value.replace(/[^0-9.]/g, '');
+    }
+
+    document.getElementById('transfer-form').addEventListener('submit', function(event) {
+      event.preventDefault(); // Prevent default form submission
+
+      const form = event.target;
+      const amountInput = form.querySelector('#amount');
+      const accountNameInput = form.querySelector('#account-name');
+      const accountNumberInput = form.querySelector('#account-number');
+
+
+      if (!amountInput || !accountNameInput || !accountNumberInput) {
+        console.error("Required form elements not found.");
+        return;
+      }
+      const amount = amountInput.value;
+      const account_name = accountNameInput.value;
+      const account_number = accountNumberInput.value;
+
+      fetch('/api/transfer/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+          },
+          body: JSON.stringify({
+            receiver_username: account_name,
+            amount: parseFloat(amount.replace(/,/g, '')),
+            receiver_account_number: account_number,
+            sender_username: localStorage.getItem('username'),
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('message').textContent = data.message;
+          if (data.status == 200) {
+            document.getElementById('transfer-form').reset();
+            // Update balance in local storage
+            let bankAccount = localStorage.getItem('bank_account')
+            bankAccount = JSON.parse(bankAccount);
+            let amountValue = parseFloat(amount.replace(/,/g, ''))
+            bankAccount.balance = (parseFloat(bankAccount.balance) - amountValue).toFixed(2);
+            localStorage.setItem('bank_account', JSON.stringify(bankAccount));
+            document.getElementById('balance').textContent = parseFloat(bankAccount.balance).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+          }
+        })
+        .catch(error => {
+          document.getElementById('message').textContent = "Failed to send request.";
+          console.error('Error:', error);
+        });
+    });
+  </script>
+</body>
+
+</html>
