@@ -3,44 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Transfer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+     <style>
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button{
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
 </head>
-<style>
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button{
-        -webkit-appearance: none;
-        margin: 0;
-    }
-</style>
 <body class="bg-slate-200">
     <section class="mt-20 w-1/3 mx-auto">
         <div class=" bg-emerald-500 rounded-t-xl">
             <div class="px-8 py-6 flex space-x-4 text-white">
-                <a href="/dist/home.html"><i class="ph-bold ph-arrow-left text-4xl hover:text-yellow-500"></i></a>
+                <a href="/"><i class="ph-bold ph-arrow-left text-4xl hover:text-yellow-500"></i></a>
                 <p class="my-auto font-semibold tracking-wider"> Fund Transfer</p>
             </div>
         </div>
         <div class="bg-white rounded-b-xl pb-8">
-            <div class="px-8 py-6 bg-white w-full">
+            <form id="transfer-form" class="px-8 py-6 bg-white w-full">
                 <div class="">
                     <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
                     <div class="relative">
                     <span class="absolute inset-y-0 left-0 flex items-center p-1 pl-3">₱</span>
-                    <input type="text" id="amount" name="amount" class="pl-6 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="0.00" onblur="formatAmount(this)" onfocus="revertAmount(this)" oninput="validateAmount(this)" step="0.01">
+                    <input type="text" id="amount" name="amount" class="pl-6 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="0.00" onblur="formatAmount(this)" onfocus="revertAmount(this)" oninput="validateAmount(this)" step="0.01" required>
                     </div>
                     <p class="mt-2 text-xs">Available Balance: ₱9,969.00</p>
                 </div>
                 <div class="mt-4">
                     <label for="account-name" class="block text-sm font-medium text-gray-700">Account Name</label>
-                    <input type="text" id="account-name" name="account-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="Max of 50 Characters" oninput="this.value = this.value.replace(/[0-9]/g, '')">
+                    <input type="text" id="account-name" name="account-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="Max of 50 Characters" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')" required>
                 </div>
                 <div class="mt-4">
                     <label for="account-number" class="block text-sm font-medium text-gray-700">Account Number</label>
-                    <input type="number" id="account-number" name="account-number" maxlength="12" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="12 Digits">
+                    <input type="number" id="account-number" name="account-number" maxlength="12" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm" placeholder="12 Digits" required>
                 </div>
-            </div>
+                 <div class="py-2">
+                   <button type="submit" class="mt-4 bg-emerald-500 text-white py-2 w-full rounded-md hover:bg-emerald-600 hover:text-yellow-500">Transfer</button>
+                </div>
+                 <div id="message" style="color: red;"></div>
+            </form>
+              <div class="px-8">
+                <button type="button" id="logout-button" class="mt-4 bg-gray-400 text-white py-2 w-full rounded-md hover:bg-gray-600">Logout</button>
+              </div>
         </div>   
     </section>
     
@@ -57,10 +64,81 @@
         input.value = input.value.replace(/,/g, '');
     }
 
-    function validateAmount(input) {
+     function validateAmount(input) {
         input.value = input.value.replace(/[^0-9.]/g, '');
     }
-</script>
+      document.getElementById('logout-button').addEventListener('click', function(event) {
+            const refresh = localStorage.getItem('refresh_token');
+            const accessToken = localStorage.getItem('access_token');
 
+            console.log("Logout initiated. Refresh Token:", refresh, "Access Token", accessToken);
+
+             fetch('/api/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                         'Authorization': 'Bearer ' + accessToken
+                    },
+                    body: JSON.stringify({ refresh: refresh })
+                 })
+            .then(response => {
+                    console.log("Raw Response:", response);
+                  if (!response.ok) {
+                      throw new Error(`HTTP error! Status: ${response.status}`);
+                   }
+                   if (response.status === 205){
+                        localStorage.clear();
+                        window.location.href = '/login/';
+                    }
+                    return response.json();
+              })
+                .then(data => {
+                    console.log("Response Data:", data);
+                    if (data.message === "Logout successfully") {
+                        localStorage.clear();
+                        window.location.href = '/login/';
+                    } else {
+                         document.getElementById('message').textContent = data.message;
+                     }
+                })
+                .catch(error => {
+                      console.error("Fetch Error:", error);
+                      document.getElementById('message').textContent = "Failed to send request.";
+                });
+        });
+
+        document.getElementById('transfer-form').addEventListener('submit', function(event) {
+             event.preventDefault(); // Prevent default form submission
+
+             const form = event.target;
+             const amount = form.amount.value;
+             const account_name = form.account_name.value;
+             const account_number = form.account_number.value;
+
+             fetch('/api/transfer/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                 },
+                body: JSON.stringify({
+                     receiver_username: account_name,
+                     amount: parseFloat(amount.replace(/,/g, '')),
+                     receiver_account_number: account_number
+                     })
+              })
+                 .then(response => response.json())
+                  .then(data => {
+                     document.getElementById('message').textContent = data.message;
+                      if (data.status == 200) {
+                        document.getElementById('transfer-form').reset();
+                       }
+                     })
+                 .catch(error => {
+                       document.getElementById('message').textContent = "Failed to send request.";
+                     console.error('Error:', error);
+                  });
+             });
+</script>
 </body>
 </html>

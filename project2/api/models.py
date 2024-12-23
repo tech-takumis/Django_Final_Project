@@ -1,5 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+import random
+import time
+
+User = get_user_model()
 
 class BankAccount(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -13,11 +17,15 @@ class BankAccount(models.Model):
         return f"Account {self.account_number} - {self.bank_name}"
 
 class Transaction(models.Model):
-    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE,related_name="sent_transaction")
+    def generate_transaction_id():
+      return str(int(time.time()*1000))+ str(random.randint(1000,9999))
+    transaction_id = models.CharField(max_length=255, unique=True,editable=False,default=generate_transaction_id) # Add transaction id, and default function.
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name="sent_transaction")
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE,related_name="received_transaction")
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_transaction")
+    receiver_account = models.CharField(max_length=100, null=True, blank=True)  # Add receiver account number
 
     def __str__(self):
-        return f"Sender: {self.account.user}, Receiver: {self.receiver}, Amount: {self.amount}"
+         return f"ID: {self.transaction_id}, Sender: {self.account.user}, Receiver: {self.receiver}, Amount: {self.amount}"

@@ -1,61 +1,127 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transactions</title>
+    <link rel="stylesheet" href="/src/output.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+     <style>
+     .transaction-item {
+         display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1rem 0;
+     }
+    </style>
 </head>
-<body>
-    <h2>Transactions</h2>
-     <div id="message" style="color:red;">
-            {% if message %}
-               {{message}}
-            {% endif %}
-      </div>
-   {% if data %}
-    <div id="transaction-data">
-    {% for transaction in data %}
-       <p>Sender: {{transaction.sender}}</p>
-       <p>Receiver: {{transaction.receiver}}</p>
-       <p>Amount: {{transaction.amount}}</p>
-        <p>Created At: {{transaction.created_at}}</p>
-        <hr />
-    {% endfor %}
-     </div>
-   {% endif %}
-     <div id="pagination-links">
-     {% if previous %}
-         <a href="{% url 'transaction_page' %}?page={{previous}}">Previous</a>
-      {% endif %}
-         {% if next %}
-         <a href="{% url 'transaction_page' %}?page={{next}}">Next</a>
-       {% endif %}
-  </div>
-     <button type="button" id="logout-button" >Logout</button>
+<body class="bg-slate-200">
+    <section class="mt-20 w-1/3 mx-auto">
+        <div class=" bg-emerald-500 rounded-t-xl">
+            <div class="px-8 py-6 flex space-x-4 text-white">
+                <a href="{% url 'home_page' %}"><i class="ph-bold ph-arrow-left text-4xl hover:text-yellow-500"></i></a>
+                <p class="my-auto font-semibold tracking-wider">Transactions</p>
+            </div>
+        </div>
+        <div class="bg-slate-100 rounded-b-xl pb-8">
+             <div id="message" style="color:red;">
+             </div>
+             <div id="transactions-container">
+                 <p class="px-8 py-2 font-semibold" id="date-heading"></p>
+              </div>
+            <div id="pagination-links" class="px-8 flex justify-between mt-4">
+           </div>
+        </div>
+    </section>
+     
     <script>
-        document.getElementById('logout-button').addEventListener('click', function(event) {
-            const refresh = localStorage.getItem('refresh_token')
-             fetch('/api/logout/',{
-                    method:'POST',
+        const transactionsContainer = document.getElementById('transactions-container');
+        const paginationLinks = document.getElementById('pagination-links');
+        function fetchTransactions(url){
+            fetch(url, {
+                    method: "GET",
                     headers: {
-                         'Content-Type': 'application/json',
-                         'Authorization':'Bearer ' + localStorage.getItem('access_token')
-                    },
-                     body:JSON.stringify({refresh:refresh})
-                })
-                 .then(response=>response.json())
-                 .then(data=>{
-                     if(data.message=="Logout successfully"){
-                              localStorage.clear();
-                            window.location.href='/login';
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+                    }
+                 })
+                .then(response => {
+                        if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                     })
+                .then(data => {
+                     transactionsContainer.innerHTML = "";
+                    try {
+                         if(data.data.length==0){
+                             transactionsContainer.innerHTML = "<p>No transactions found</p>";
+                              return;
+                            }
+                            let lastDate = null;
+                         data.data.forEach(transaction => {
+                           const transactionDate = new Date(transaction.created_at).toLocaleDateString(undefined, {month: 'long', day: 'numeric', year: 'numeric'});
+                           if(transactionDate !== lastDate){
+                               lastDate = transactionDate;
+                               const dateHeading = document.createElement('p');
+                               dateHeading.classList.add('px-8', 'py-2', 'font-semibold');
+                               dateHeading.textContent = transactionDate;
+                                transactionsContainer.appendChild(dateHeading)
+                            }
+                            const transactionDiv = document.createElement('div');
+                            transactionDiv.classList.add('px-8', 'py-6', 'bg-white', 'w-full');
+                            const transactionContent = `
+                              <div class="flex justify-between">
+                                <div class="space-y-2">
+                                 <p class="text-gray-600 text-sm tracking-tight">${new Date(transaction.created_at).toLocaleTimeString(undefined,{ hour: '2-digit', minute: '2-digit' })}</p>
+                                <p class="font-semibold text-lg">Transfer to: ${transaction.receiver}</p>
+                                 </div>
+                                    <div class="flex items-end">
+                                        <p class="font-semibold text-lg">${parseFloat(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    </div>
+                            </div>
+                             <hr class="my-6">
+                            `
+                            transactionDiv.innerHTML = transactionContent;
+                            transactionsContainer.appendChild(transactionDiv);
+                      });
+                      }catch(error){
+                       transactionsContainer.innerHTML = "<p>Unable to parse data</p>";
+                        console.error("Error parsing data",error);
+                      }
+
+                    paginationLinks.innerHTML = "";
+                    if (data.previous) {
+                        const previousLink = document.createElement('a');
+                        previousLink.href = data.previous;
+                        previousLink.textContent = 'Previous';
+                        paginationLinks.appendChild(previousLink);
+                        previousLink.addEventListener('click', function (event) {
+                            event.preventDefault();
+                            fetchTransactions(data.previous);
+                        });
+
                      }
-                      document.getElementById('message').textContent = data.message;
-                })
-                .catch(error=>{
-                      document.getElementById('message').textContent = "Failed to send request.";
-                    console.error('Error:', error)
-                });
-         })
+                    if (data.next) {
+                        const nextLink = document.createElement('a');
+                        nextLink.href = data.next;
+                         nextLink.textContent = 'Next';
+                        paginationLinks.appendChild(nextLink);
+                        nextLink.addEventListener('click', function (event) {
+                          event.preventDefault();
+                          fetchTransactions(data.next);
+                        });
+                    }
+                 })
+                .catch(error => {
+                     document.getElementById('message').textContent = "Failed to send request.";
+                    console.error('Error:', error);
+               });
+           }
+           fetchTransactions('/api/transactions/')
     </script>
+<script src="{% static 'js/websocket.js' %}"></script>
 </body>
 </html>
