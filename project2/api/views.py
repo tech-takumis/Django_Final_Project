@@ -70,134 +70,185 @@ def logout_user(request):
         return JsonResponse({"message": "Failed to logout user"}, status=status.HTTP_400_BAD_REQUEST)
     
 
-# Project2 Login API
 @csrf_exempt    
 @api_view(['POST'])
-@permission_classes([AllowAny]) # Allows all to access endpoint
+@permission_classes([AllowAny])  # Allows all to access the endpoint
 def login_user(request):
     try:
-        encrypted_data = request.data.get("data") # Extract encrypted data from the payload
-        logger.debug(f"Receive data from project1: {encrypted_data}") # Log received data
-        if not encrypted_data: # If not found, return an error
+        # Extract encrypted data from the request payload
+        encrypted_data = request.data.get("data")
+        logger.debug(f"Received data from project1: {encrypted_data}")  # Log received data
+
+        if not encrypted_data:  # If data is not present, return an error
             return JsonResponse({"message": "data not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Decrypt data
+        # Decrypt incoming data
         decrypted_data = f.decrypt(encrypted_data.encode()).decode()
         data = json.loads(decrypted_data)
-        username = data.get("username") # Retrieve username
-        password = data.get("password") # retrieve password
+        username = data.get("username")  # Retrieve username
+        password = data.get("password")  # Retrieve password
 
-        if not username or not password: # check if username and password is present
+        if not username or not password:  # Validate presence of username and password
             return JsonResponse({'message': 'Invalid username or password'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = User.objects.get(username=username) # get the user from the username
-            if not user.check_password(password): #check if the password is correct
+            # Get user from username
+            user = User.objects.get(username=username)
+            if not user.check_password(password):  # Validate password
                 return JsonResponse({'message': 'Invalid username or password'}, status=status.HTTP_400_BAD_REQUEST)
 
-             # Check if user has bank account
+            # Retrieve or create bank account
             try:
-                bank_account = BankAccount.objects.get(user=user) # if exist, then retrieve
+                bank_account = BankAccount.objects.get(user=user)
             except BankAccount.DoesNotExist:
-                # Create a default BankAccount for the user
+                # If bank account doesn't exist, create one with encrypted fields
+                account_number = ''.join([str(random.randint(0, 9)) for _ in range(12)])
+
+                initial_balance = decimal.Decimal('500.00')
+                encrypted_balance = f.encrypt(str(initial_balance).encode()).decode()
+
                 bank_account = BankAccount.objects.create(
-                     user = user,
-                     account_number=''.join([str(random.randint(0, 9)) for _ in range(12)]),  # generate a 12 digit random number as account number
-                     balance=0.00,
-                     bank_name="MyBank",
-                    )
+                    user=user,
+                    account_number=account_number,
+                    balance=encrypted_balance,
+                    bank_name="My Bank"
+                )  # Create bank account
+
+            # Serialize user data
+            serializer = SerializeBankAccount(bank_account)
+
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             access = str(refresh.access_token)
-            serializer = SerializeBankAccount(bank_account)
-            return JsonResponse({
+
+            # Prepare response data, including manually encrypted fields
+            response_data = {
                 "access": access,
                 "refresh": str(refresh),
                 "message": "Login successful",
                 "user_id": user.id,
-                "username": user.username, 
-                "bank_account": serializer.data
-            }, status=status.HTTP_200_OK)
-        except User.DoesNotExist: # if user not found
+                "username": user.username,
+                "bank_account": {
+                    # Include manually encrypted fields without passing through the serializer
+                    "balance": bank_account.balance,  # Already encrypted
+                    "account_number": bank_account.account_number,  # Already encrypted
+                    **serializer.data,  # Include other fields from the serializer
+                },
+            }
+
+            # Encrypt response data except already-encrypted fields
+            encrypted_response_data = f.encrypt(json.dumps(response_data).encode()).decode()
+
+            # Return encrypted response
+            return JsonResponse({"data": encrypted_response_data}, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:  # If user not found
             return JsonResponse({'message': 'Invalid username or password'}, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e: # if there is an error decrypting
-        logger.error("Error during login user in project 2", exc_info=True)
+
+    except Exception as e:  # Handle decryption or other errors
+        logger.error("Error during login_user in project 2", exc_info=True)
         return JsonResponse({"message": "error decrypting data"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Project2 Transfer API
 @api_view(['POST'])
-@permission_classes([IsAuthenticated]) # Must be authenticated
+@permission_classes([IsAuthenticated])  # Must be authenticated
 def make_transfer(request):
     try:
-        encrypted_data = request.data.get('data') # retrieve encrypted data from body
-        if not encrypted_data: # if data is not found
-            return JsonResponse({"message":"data not found"},status=status.HTTP_400_BAD_REQUEST)
+        encrypted_data = request.data.get('data')  # retrieve encrypted data from body
+        logger.info(f"Received encrypted data from project1: {encrypted_data}")
+        if not encrypted_data:  # if data is not found
+            return JsonResponse({"message": "data not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        decrypted_data= f.decrypt(encrypted_data.encode()).decode() # decrypt data
-        data = json.loads(decrypted_data) # load decrypted data as json
-        sender_username = data.get("sender_username") # extract sender username
-        receiver_username = data.get("receiver_username") # extract receiver username
-        amount = data.get("amount") # extract amount
-        receiver_account_number = data.get('receiver_account_number') #get receiver account number
-        if not sender_username or not receiver_username or not amount or not receiver_account_number: # check if username, receiver and amount is present
-            return JsonResponse({"message":"sender_username,receiver_username, or amount or receiver account number not found"},status=status.HTTP_400_BAD_REQUEST)
+        decrypted_data = f.decrypt(encrypted_data.encode()).decode()  # decrypt data
+        logger.info(f"Received decrypted data from project1: {decrypted_data}")
+        data = json.loads(decrypted_data)  # load decrypted data as json
+        sender_username = data.get("sender_username")  # extract sender username
+        receiver_username = data.get("receiver_username")  # extract receiver username
+        amount = data.get("amount")  # extract amount
+        receiver_account_number = data.get('receiver_account_number')  # get receiver account number
+
+        # Check if essential fields are missing
+        if not sender_username or not receiver_username or not amount or not receiver_account_number:
+            return JsonResponse({"message": "sender_username, receiver_username, or amount or receiver account number not found"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            amount=decimal.Decimal(amount) # convert amount to decimal value, we will no longer use float conversion
-        except: # if not a float number
-            return JsonResponse({"message":"Invalid amount"},status=status.HTTP_400_BAD_REQUEST)
-        if amount <=0: # amount has to be above 0
-            return JsonResponse({"message":"Amount must be greater than zero"},status=status.HTTP_400_BAD_REQUEST)
+            amount = decimal.Decimal(amount)  # convert amount to decimal value
+        except Exception:  # if not a valid decimal number
+            return JsonResponse({"message": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount <= 0:  # amount has to be above 0
+            return JsonResponse({"message": "Amount must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            sender = User.objects.get(username=sender_username) # get sender object
-            receiver = User.objects.get(username=receiver_username) # get receiver object
-            sender_account = BankAccount.objects.get(user=sender) # get sender bank account object
-            if sender_account.balance < amount: # if balance is insufficient
-                return JsonResponse({"message":"Insufficient balance"},status=status.HTTP_400_BAD_REQUEST)
+            sender = User.objects.get(username=sender_username)  # get sender object
+            receiver = User.objects.get(username=receiver_username)  # get receiver object
+            sender_account = BankAccount.objects.get(user=sender)  # get sender bank account object
+
+            # Decrypt sender's balance
+            decrypted_sender_balance = f.decrypt(sender_account.balance.encode()).decode()
+            sender_account_balance = decimal.Decimal(decrypted_sender_balance)
+
+            if sender_account_balance < amount:  # if balance is insufficient
+                return JsonResponse({"message": "Insufficient balance"}, status=status.HTTP_400_BAD_REQUEST)
+
             try:
-                receiver_account = BankAccount.objects.get(account_number=receiver_account_number) # get receiver bank account object
-            except BankAccount.DoesNotExist:
-                  logger.error("bank account for receiver does not exists in project 2", exc_info=True)
-                  return JsonResponse({"message":"Receiver bank account does not exists"},status=status.HTTP_400_BAD_REQUEST)
-            
-            # perform transfer
-            sender_account.balance -= amount # remove money from sender account
-            receiver_account.balance += amount # add money to receiver
+                receiver_account = BankAccount.objects.get(account_number=receiver_account_number)  # get receiver bank account object
+                # Decrypt receiver's balance
+                decrypted_receiver_balance = f.decrypt(receiver_account.balance.encode()).decode()
+                receiver_account_balance = decimal.Decimal(decrypted_receiver_balance)
 
-            sender_account.save() # save sender account
-            receiver_account.save() # save receiver account
+            except BankAccount.DoesNotExist:
+                logger.error(f"Bank account for receiver with account number {receiver_account_number} does not exist in project 2")
+                return JsonResponse({"message": "Receiver bank account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Perform transfer
+            sender_account_balance -= amount  # deduct money from sender account
+            receiver_account_balance += amount  # add money to receiver
+
+            encrypted_sender_balance = f.encrypt(str(sender_account_balance).encode()).decode()
+            encrypted_receiver_balance = f.encrypt(str(receiver_account_balance).encode()).decode()
+
+            # Update bank account balances
+            sender_account.balance = encrypted_sender_balance
+            receiver_account.balance = encrypted_receiver_balance
+
+            sender_account.save()  # save sender account
+            receiver_account.save()  # save receiver account
 
             encrypted_amount = f.encrypt(str(amount).encode()).decode()
             encrypted_receiver_account = f.encrypt(str(receiver_account_number).encode()).decode()
 
-            transaction = Transaction.objects.create(account=sender_account,amount=encrypted_amount,receiver=receiver,receiver_account=encrypted_receiver_account) # create transaction
-            
+            # Create transaction record
+            transaction = Transaction.objects.create(account=sender_account, amount=encrypted_amount,
+                                                     receiver=receiver, receiver_account=encrypted_receiver_account)
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                 f"user_{receiver.id}",
-                 {
-                     "type": "send_notification",
-                      "message": f"{sender_username} has transfered {amount} to you", #updated the messages so it provides more information.
-                      "sender": sender_username,
-                      "amount": str(amount),
-                      "receiver_id": receiver.id
-                  }
-             )
+                f"user_{receiver.id}",
+                {
+                    "type": "send_notification",
+                    "message": f"{sender_username} has transferred {amount} to you",  # Updated message to provide more information
+                    "sender": sender_username,
+                    "amount": str(amount),
+                    "receiver_id": receiver.id
+                }
+            )
             logger.info(f"Notification sent to user_{receiver.id}")
-            return JsonResponse({'message':'Transfer successfull in project 2'},status=status.HTTP_200_OK)
-        
-        except BankAccount.DoesNotExist: # if bank account does not exist
-            logger.error("bank account for sender does not exists in project 2", exc_info=True)
-            return JsonResponse({"message":"bank account does not exists"},status=status.HTTP_400_BAD_REQUEST)
-        except User.DoesNotExist: # if user does not exist
-            logger.error("user does not exists in project 2", exc_info=True)
-            return JsonResponse({"message":"user does not exists"},status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'message': 'Transfer successful in project 2'}, status=status.HTTP_200_OK)
+
+        except BankAccount.DoesNotExist:  # if bank account does not exist
+            logger.error("Bank account for sender does not exist in project 2", exc_info=True)
+            return JsonResponse({"message": "Bank account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:  # if user does not exist
+            logger.error("User does not exist in project 2", exc_info=True)
+            return JsonResponse({"message": "User does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error("Failed to make transaction try again later in project 2", exc_info=True)
-            return JsonResponse({"message":"Failed to make transaction try again later"},status=status.HTTP_400_BAD_REQUEST)
+            logger.error("Failed to make transaction. Try again later in project 2", exc_info=True)
+            return JsonResponse({"message": "Failed to make transaction. Try again later"}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
         logger.error("Error in decrypting data in make_transfer in project 2", exc_info=True)
-        return JsonResponse({"message":"error decrypting data"},status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse({"message": "Error decrypting data"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 
@@ -288,10 +339,16 @@ def register_user(request):
             return JsonResponse({"message":"username or password or email or full name not found"},status=status.HTTP_400_BAD_REQUEST)
         try:
             user = User.objects.create_user(username=username, password=password,email=email,first_name=first_name,last_name=last_name) # create user
-            bank_account = BankAccount.objects.create(user=user,
-            account_number=''.join([str(random.randint(0, 9)) for _ in range(12)]),
-            balance=decimal.Decimal('500.00'),
-            bank_name="My Bank"
+            account_number = ''.join([str(random.randint(0, 9)) for _ in range(12)])
+
+            initial_balance = decimal.Decimal('500.00')
+            encrypted_balance = f.encrypt(str(initial_balance).encode()).decode
+
+            bank_account = BankAccount.objects.create(
+                user=user,
+                account_number=account_number,
+                balance=encrypted_balance,
+                bank_name="My Bank"
             ) # create bank account
             return JsonResponse({"message":"user registered in project2"},status=status.HTTP_201_CREATED)
         except Exception as e: # if there was a general error in the operation

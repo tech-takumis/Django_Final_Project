@@ -36,7 +36,7 @@ def register_user(request):
 
         # Encrypt data with Fernet
         encrypted_data = f.encrypt(json.dumps(data).encode())
-
+        logger.info(f"Register account encrypted user information:{encrypted_data.decode()}")
 
         # Send the encrypted user data to Project 2
         response = requests.post(f"{PROJECT2_URL}/api/register/", json={"data":encrypted_data.decode()})
@@ -74,26 +74,49 @@ def login_user(request):
         response = requests.post(f"{PROJECT2_URL}/api/login/", json={"data": encrypted_data.decode()})
 
         if response.status_code == status.HTTP_200_OK:
-            # Pass back the success response from Project2
+            # Process successful response
             response_data = response.json()
+            # Received the encrypted data return by project2
+            encrypted_response_data = response_data.get("data")
+
+            logger.info(f"Received encrypted information after successfully login: {encrypted_response_data}")
+            if not encrypted_response_data:
+                logger.error("Encrypted response data not found in Project 2 response")
+                return JsonResponse({'message': 'Invalid response from server'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Decrypt the response data
+            decrypted_data = json.loads(f.decrypt(encrypted_response_data.encode()).decode())
+            logger.debug(f"Decrypted user credential: {decrypted_data}")
+
+            # Decrypt balance and account number (as they are encrypted in Project2)
+            bank_account = decrypted_data.get("bank_account")
+            if bank_account:
+                encrypted_balance = bank_account.get("balance")
+
+                if encrypted_balance:
+                    bank_account["balance"] = f.decrypt(encrypted_balance.encode()).decode()  # Decrypt balance
+
+            # Return the decrypted data as JSON
             return JsonResponse({
-                'access': response_data.get('access'),
-                'refresh': response_data.get('refresh'),
-                'message': response_data.get('message'),
+                'access': decrypted_data.get('access'),
+                'refresh': decrypted_data.get('refresh'),
+                'message': decrypted_data.get('message'),
                 'status': response.status_code,
-                'user_id':response_data.get('user_id'),
-                'username':response_data.get('username'),
-                'bank_account': response_data.get('bank_account'),
+                'user_id': decrypted_data.get('user_id'),
+                'username': decrypted_data.get('username'),
+                'bank_account': bank_account,  # Include decrypted bank account
             }, status=status.HTTP_200_OK)
+
         else:
+            # Log and handle failed responses from Project 2
             logger.error(f"Login failed with status code: {response.status_code}, and response text: {response.text}")
             return JsonResponse({'message': 'Invalid username or password', 'status': response.status_code},
                                 status=response.status_code)
     except Exception as e:
-        logger.error("Login in project 1 failed", exc_info=True)
+        # Handle any exceptions during the process
+        logger.error("Login in Project 1 failed", exc_info=True)
         return JsonResponse({'message': 'Server error. Please try again later.'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 
 
 
@@ -186,46 +209,66 @@ def make_transfer(request):
         logger.error("Error in make_transfer in project1", exc_info=True)
         return JsonResponse({"message":"Failed to make transaction try again later"},status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['GET'])
-@authentication_classes([])
+@authentication_classes([])  # No authentication class required for now
 def get_transactions_api(request):
     try:
+        # Validate the Authorization header
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
-             logger.error("Authorization header is missing or invalid")
-             return JsonResponse({"message": "Authorization header is missing or invalid"}, status=status.HTTP_401_UNAUTHORIZED)
-           
+            logger.error("Authorization header is missing or invalid")
+            return JsonResponse({"message": "Authorization header is missing or invalid"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Extract access token
         access_token = auth_header.split(' ')[1]
-           
-            # Send transaction data to Project 2
+        
+        # Prepare headers for the request to Project 2
         headers = {
-               'Authorization':f"Bearer {access_token}",
-               'Content-Type': 'application/json'
-           }
+            'Authorization': f"Bearer {access_token}",
+            'Content-Type': 'application/json'
+        }
+        
+        # Get the page query parameter
         page = request.GET.get('page', 1)
+
+        # Make the request to Project 2's transactions API
         response = requests.get(f"{PROJECT2_URL}/api/transactions/?page={page}", headers=headers)
+
         if response.status_code == status.HTTP_200_OK:
             data = response.json()
-            
+
+            # Ensure 'data' key contains the encrypted string
+            encrypted_data = data.get('data')
+            if not isinstance(encrypted_data, str):
+                logger.error(f"Invalid data type for 'data': {type(encrypted_data)}")
+                return JsonResponse({'message': 'Invalid data format from Project 2'}, status=status.HTTP_400_BAD_REQUEST)
+
             try:
-                  if data and 'data' in data:
-                    decrypted_data = f.decrypt(data.get('data').encode()).decode() # Decrypt the encrypted data from project2
-                    data = json.loads(decrypted_data) # load the string into a JSON and reassign the value back to data.
-                    return JsonResponse({'data':data}, status=status.HTTP_200_OK)
-                  else:
-                      logger.error(f"Missing data key in response from Project2, response: {data}")
-                      return JsonResponse({'message': 'Missing data from response'}, status=status.HTTP_400_BAD_REQUEST)
+                # Decrypt the encrypted data string
+                decrypted_data = f.decrypt(encrypted_data.encode()).decode()  # Ensure it's decoded from bytes to string
+                transactions = json.loads(decrypted_data)  # Parse the decrypted JSON string into a list of transactions
+                
+                # Decrypt individual fields in each transaction
+                for transaction in transactions:
+                    for field in transaction:
+                        if isinstance(transaction[field], str) and transaction[field].startswith("gAAAAA"):  # Check if it's encrypted
+                            try:
+                                transaction[field] = f.decrypt(transaction[field].encode()).decode()  # Decrypt the field
+                            except Exception as e:
+                                logger.error(f"Error decrypting field '{field}': {e}", exc_info=True)
+                                transaction[field] = None  # Set to None or keep as is if decryption fails
+
+                logger.info(f"Decrypted transactions: {transactions}")
+                return JsonResponse({'data': transactions}, status=status.HTTP_200_OK)
             except Exception as e:
-                logger.error("Error in decrypting data in show_transaction in project1", exc_info=True)
-                return JsonResponse({"message":"error decrypting data"},status=status.HTTP_400_BAD_REQUEST)
+                logger.error("Error decrypting data in get_transactions_api", exc_info=True)
+                return JsonResponse({"message": "Error decrypting data"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             logger.error("Failed to get transactions with status code: %s, and response: %s", response.status_code, response.text)
             return JsonResponse({"message": "Failed to get transactions"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error("Failed to get transactions in project 1", exc_info=True)
-        return JsonResponse({"message":"Failed to get transactions try again later"},status=status.HTTP_400_BAD_REQUEST)   
-
+        logger.error("Error occurred in get_transactions_api", exc_info=True)
+        return JsonResponse({"message": "Failed to get transactions, try again later"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def register_page(request):
