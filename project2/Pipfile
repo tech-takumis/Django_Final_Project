@@ -11,6 +11,9 @@ requests = "*"
 cryptography = "*"
 django-cors-headers = "*"
 python-dotenv = "*"
+psycopg2-binary = "*"
+daphne = "*"
+channels = "*"
 
 [dev-packages]
 

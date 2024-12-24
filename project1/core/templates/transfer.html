@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -60,7 +61,6 @@
         });
       }
     }
-
     document.addEventListener('DOMContentLoaded', function() {
       const bank_account_str = localStorage.getItem('bank_account')
       if (bank_account_str) {
@@ -71,7 +71,6 @@
         });
       }
     })
-
     function revertAmount(input) {
       input.value = input.value.replace(/,/g, '');
     }
@@ -88,7 +87,6 @@
       const accountNameInput = form.querySelector('#account-name');
       const accountNumberInput = form.querySelector('#account-number');
 
-
       if (!amountInput || !accountNameInput || !accountNumberInput) {
         console.error("Required form elements not found.");
         return;
@@ -104,35 +102,44 @@
             'Authorization': 'Bearer ' + localStorage.getItem('access_token')
           },
           body: JSON.stringify({
-            receiver_username: account_name,
-            amount: parseFloat(amount.replace(/,/g, '')),
+             receiver_username: account_name,
+             amount: parseFloat(amount.replace(/,/g, '')),
             receiver_account_number: account_number,
-            sender_username: localStorage.getItem('username'),
-          })
-        })
-        .then(response => response.json())
-        .then(data => {
-          document.getElementById('message').textContent = data.message;
-          if (data.status == 200) {
-            document.getElementById('transfer-form').reset();
-            // Update balance in local storage
-            let bankAccount = localStorage.getItem('bank_account')
-            bankAccount = JSON.parse(bankAccount);
-            let amountValue = parseFloat(amount.replace(/,/g, ''))
-            bankAccount.balance = (parseFloat(bankAccount.balance) - amountValue).toFixed(2);
-            localStorage.setItem('bank_account', JSON.stringify(bankAccount));
-            document.getElementById('balance').textContent = parseFloat(bankAccount.balance).toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            });
-          }
-        })
-        .catch(error => {
-          document.getElementById('message').textContent = "Failed to send request.";
-          console.error('Error:', error);
-        });
-    });
-  </script>
-</body>
+             sender_username: localStorage.getItem('username'),
+           })
+      })
+          .then(response => response.json())
+          .then(data => {
+            const notificationDiv = document.createElement('div');
+              notificationDiv.classList.add('fixed', 'bottom-4', 'left-4', 'bg-emerald-600','text-white','p-4','rounded-md');
+              notificationDiv.textContent = data.message;
 
+              // Append the notification div to the body
+              document.body.appendChild(notificationDiv);
+
+            // Set a timeout to remove the notification after a few seconds (e.g., 5 seconds)
+              setTimeout(() => {
+                  if(notificationDiv && notificationDiv.parentNode){
+                      notificationDiv.parentNode.removeChild(notificationDiv);
+                  }
+                }, 5000);
+              if (data.status == 200) {
+                document.getElementById('transfer-form').reset();
+                   let bankAccount = localStorage.getItem('bank_account')
+                   bankAccount = JSON.parse(bankAccount);
+                     let amountValue = parseFloat(amount.replace(/,/g, ''))
+                    bankAccount.balance = (parseFloat(bankAccount.balance) - amountValue).toFixed(2);
+                    localStorage.setItem('bank_account',JSON.stringify(bankAccount));
+                   document.getElementById('balance').textContent = parseFloat(bankAccount.balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2 });
+               }
+         })
+          .catch(error => {
+            document.getElementById('message').textContent = "Failed to send request.";
+              console.error('Error:', error);
+         });
+    });
+
+    </script>
+    <script src="{% static 'js/websocket.js' %}"></script>
+</body>
 </html>
