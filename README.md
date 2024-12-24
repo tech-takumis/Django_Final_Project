@@ -44,7 +44,7 @@ Follow these steps to set up the Paw Bank application on your local machine:
 1.  **Clone the repository:**
 
     ```bash
-    git clone [your-repo-url]
+    git clone [https://github.com/tech-takumis/Django_Final_Project.git]
     cd paw-bank
     ```
 
