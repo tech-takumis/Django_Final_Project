@@ -39,6 +39,69 @@ This project leverages the following technologies and packages:
 ### Dependencies Graph
 
 Below is a graph of our project dependencies.
+channels==4.2.0
+├── asgiref
+└── Django
+├── asgiref
+├── sqlparse
+└── tzdata
+daphne==4.1.2
+├── asgiref
+├── autobahn
+│ ├── cryptography
+│ │ └── cffi
+│ │ └── pycparser
+│ ├── hyperlink
+│ │ └── idna
+│ ├── setuptools
+│ └── txaio
+└── Twisted
+├── attrs
+├── Automat
+├── constantly
+├── hyperlink
+│ └── idna
+├── incremental
+│ └── setuptools
+├── typing_extensions
+└── zope.interface
+└── setuptools
+django-cors-headers==4.6.0
+├── asgiref
+└── Django
+├── asgiref
+├── sqlparse
+└── tzdata
+djangorestframework-simplejwt==5.3.1
+├── Django
+│ ├── asgiref
+│ ├── sqlparse
+│ └── tzdata
+├── djangorestframework
+│ └── Django
+│ ├── asgiref
+│ ├── sqlparse
+│ └── tzdata
+└── PyJWT
+psycopg2-binary==2.9.10
+pyOpenSSL==24.3.0
+└── cryptography
+└── cffi
+└── pycparser
+python-dotenv==1.0.1
+requests==2.32.3
+├── certifi
+├── charset-normalizer
+├── idna
+└── urllib3
+service-identity==24.2.0
+├── attrs
+├── cryptography
+│ └── cffi
+│ └── pycparser
+├── pyasn1
+└── pyasn1_modules
+└── pyasn1
 
 ## Installation
 
