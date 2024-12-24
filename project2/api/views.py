@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes,authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -17,7 +17,7 @@ import random
 import decimal
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-
+import requests
 from .models import BankAccount, Transaction # Import the models
 from rest_framework.pagination import PageNumberPagination #Import Pagination class
 from .serializer import SerializeTransactions, SerializeBankAccount, SerializeUser # Import Serializer
@@ -28,6 +28,7 @@ f = Fernet(settings.ENCRYPTION_KEY) # Initialize Fernet for decryption
 
 User = get_user_model() # Get the user model for authentication
 
+PROJECT2_URL = "http://localhost:8001"
 
 class CustomPagination(PageNumberPagination):
     page_size = 10
