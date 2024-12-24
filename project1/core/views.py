@@ -36,7 +36,7 @@ def register_user(request):
 
         # Encrypt data with Fernet
         encrypted_data = f.encrypt(json.dumps(data).encode())
-
+        logger.info(f"Register account encrypted user information:{encrypted_data.decode()}")
 
         # Send the encrypted user data to Project 2
         response = requests.post(f"{PROJECT2_URL}/api/register/", json={"data":encrypted_data.decode()})
@@ -74,26 +74,49 @@ def login_user(request):
         response = requests.post(f"{PROJECT2_URL}/api/login/", json={"data": encrypted_data.decode()})
 
         if response.status_code == status.HTTP_200_OK:
-            # Pass back the success response from Project2
+            # Process successful response
             response_data = response.json()
+            # Received the encrypted data return by project2
+            encrypted_response_data = response_data.get("data")
+
+            logger.info(f"Received encrypted information after successfully login: {encrypted_response_data}")
+            if not encrypted_response_data:
+                logger.error("Encrypted response data not found in Project 2 response")
+                return JsonResponse({'message': 'Invalid response from server'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Decrypt the response data
+            decrypted_data = json.loads(f.decrypt(encrypted_response_data.encode()).decode())
+            logger.debug(f"Decrypted user credential: {decrypted_data}")
+
+            # Decrypt balance and account number (as they are encrypted in Project2)
+            bank_account = decrypted_data.get("bank_account")
+            if bank_account:
+                encrypted_balance = bank_account.get("balance")
+
+                if encrypted_balance:
+                    bank_account["balance"] = f.decrypt(encrypted_balance.encode()).decode()  # Decrypt balance
+
+            # Return the decrypted data as JSON
             return JsonResponse({
-                'access': response_data.get('access'),
-                'refresh': response_data.get('refresh'),
-                'message': response_data.get('message'),
+                'access': decrypted_data.get('access'),
+                'refresh': decrypted_data.get('refresh'),
+                'message': decrypted_data.get('message'),
                 'status': response.status_code,
-                'user_id':response_data.get('user_id'),
-                'username':response_data.get('username'),
-                'bank_account': response_data.get('bank_account'),
+                'user_id': decrypted_data.get('user_id'),
+                'username': decrypted_data.get('username'),
+                'bank_account': bank_account,  # Include decrypted bank account
             }, status=status.HTTP_200_OK)
+
         else:
+            # Log and handle failed responses from Project 2
             logger.error(f"Login failed with status code: {response.status_code}, and response text: {response.text}")
             return JsonResponse({'message': 'Invalid username or password', 'status': response.status_code},
                                 status=response.status_code)
     except Exception as e:
-        logger.error("Login in project 1 failed", exc_info=True)
+        # Handle any exceptions during the process
+        logger.error("Login in Project 1 failed", exc_info=True)
         return JsonResponse({'message': 'Server error. Please try again later.'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 
 
 
