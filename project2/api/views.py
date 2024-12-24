@@ -205,7 +205,6 @@ def make_transfer(request):
             sender_account_balance -= amount  # deduct money from sender account
             receiver_account_balance += amount  # add money to receiver
 
-            # Re-encrypt the updated balances
             encrypted_sender_balance = f.encrypt(str(sender_account_balance).encode()).decode()
             encrypted_receiver_balance = f.encrypt(str(receiver_account_balance).encode()).decode()
 
@@ -222,8 +221,6 @@ def make_transfer(request):
             # Create transaction record
             transaction = Transaction.objects.create(account=sender_account, amount=encrypted_amount,
                                                      receiver=receiver, receiver_account=encrypted_receiver_account)
-
-            # Send notification
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f"user_{receiver.id}",
@@ -360,3 +357,64 @@ def register_user(request):
     except Exception as e: # if there was an error decrypting the data
         logger.error("Error during decrypting data in project 2", exc_info=True)
         return JsonResponse({"message":"error decrypting data"},status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+@authentication_classes([])  # No authentication class required for now
+def get_transactions_api(request):
+    try:
+        # Validate the Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            logger.error("Authorization header is missing or invalid")
+            return JsonResponse({"message": "Authorization header is missing or invalid"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Extract access token
+        access_token = auth_header.split(' ')[1]
+        
+        # Prepare headers for the request to Project 2
+        headers = {
+            'Authorization': f"Bearer {access_token}",
+            'Content-Type': 'application/json'
+        }
+        
+        # Get the page query parameter
+        page = request.GET.get('page', 1)
+
+        # Make the request to Project 2's transactions API
+        response = requests.get(f"{PROJECT2_URL}/api/transactions/?page={page}", headers=headers)
+
+        if response.status_code == status.HTTP_200_OK:
+            data = response.json()
+
+            # Ensure 'data' key contains the encrypted string
+            encrypted_data = data.get('data')
+            if not isinstance(encrypted_data, str):
+                logger.error(f"Invalid data type for 'data': {type(encrypted_data)}")
+                return JsonResponse({'message': 'Invalid data format from Project 2'}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                # Decrypt the encrypted data string
+                decrypted_data = f.decrypt(encrypted_data.encode()).decode()  # Ensure it's decoded from bytes to string
+                transactions = json.loads(decrypted_data)  # Parse the decrypted JSON string into a list of transactions
+                
+                # Decrypt individual fields in each transaction
+                for transaction in transactions:
+                    for field in transaction:
+                        if isinstance(transaction[field], str) and transaction[field].startswith("gAAAAA"):  # Check if it's encrypted
+                            try:
+                                transaction[field] = f.decrypt(transaction[field].encode()).decode()  # Decrypt the field
+                            except Exception as e:
+                                logger.error(f"Error decrypting field '{field}': {e}", exc_info=True)
+                                transaction[field] = None  # Set to None or keep as is if decryption fails
+
+                logger.info(f"Decrypted transactions: {transactions}")
+                return JsonResponse({'data': transactions}, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error("Error decrypting data in get_transactions_api", exc_info=True)
+                return JsonResponse({"message": "Error decrypting data"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            logger.error("Failed to get transactions with status code: %s, and response: %s", response.status_code, response.text)
+            return JsonResponse({"message": "Failed to get transactions"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error("Error occurred in get_transactions_api", exc_info=True)
+        return JsonResponse({"message": "Failed to get transactions, try again later"}, status=status.HTTP_400_BAD_REQUEST)

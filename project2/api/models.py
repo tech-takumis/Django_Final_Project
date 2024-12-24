@@ -28,4 +28,4 @@ class Transaction(models.Model):
     receiver_account = models.TextField()
 
     def __str__(self):
-         return f"ID: {self.transaction_id}, Sender: {self.account.user}, Receiver: {self.receiver}, Amount: {self.amount}"
+        return f"ID: {self.transaction_id}, Sender: {self.account.user}, Receiver: {self.receiver}, Amount: {self.amount}"

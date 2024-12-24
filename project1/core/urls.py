@@ -16,5 +16,5 @@ urlpatterns = [
     path('transactions/',views.transaction_page,name='transaction_page'),
     path('profile/',views.user_profile,name="user_profile"),
     path('',views.welcome_page,name="welcome_page")
-    
+
 ]
