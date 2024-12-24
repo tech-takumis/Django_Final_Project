@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,10 +78,12 @@
                     }
                })
                .catch(error=>{
+                    console.error('Error:', error)
                     document.getElementById('message').textContent = "Failed to send request.";
                      console.error('Error:', error)
                 });
            })
     </script>
 </body>
+<script src="{% static 'js/websocket.js' %}"></script>
 </html>
