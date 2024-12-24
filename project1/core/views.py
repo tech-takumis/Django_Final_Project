@@ -254,3 +254,8 @@ def transaction_page(request):
 def user_profile(request):
     return render(request, 'profile.html')
 
+@api_view(['GET'])
+@authentication_classes([])
+def welcome_page(request):
+    return render(request, 'welcome.html')
+
