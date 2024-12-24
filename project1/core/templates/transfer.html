@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 {% load static %}
+=======
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
 <!DOCTYPE html>
 <html lang="en">
 
@@ -61,6 +64,10 @@
         });
       }
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
     document.addEventListener('DOMContentLoaded', function() {
       const bank_account_str = localStorage.getItem('bank_account')
       if (bank_account_str) {
@@ -71,11 +78,21 @@
         });
       }
     })
+<<<<<<< HEAD
     function revertAmount(input) {
       input.value = input.value.replace(/,/g, '');
     }
       function validateAmount(input) {
         input.value = input.value.replace(/[^0-9.]/g, '');
+=======
+
+    function revertAmount(input) {
+      input.value = input.value.replace(/,/g, '');
+    }
+
+    function validateAmount(input) {
+      input.value = input.value.replace(/[^0-9.]/g, '');
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
     }
 
     document.getElementById('transfer-form').addEventListener('submit', function(event) {
@@ -86,14 +103,24 @@
       const accountNameInput = form.querySelector('#account-name');
       const accountNumberInput = form.querySelector('#account-number');
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
       if (!amountInput || !accountNameInput || !accountNumberInput) {
         console.error("Required form elements not found.");
         return;
       }
+<<<<<<< HEAD
 
         const amount = amountInput.value;
         const account_name = accountNameInput.value;
         const account_number = accountNumberInput.value;
+=======
+      const amount = amountInput.value;
+      const account_name = accountNameInput.value;
+      const account_number = accountNumberInput.value;
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
 
       fetch('/api/transfer/', {
           method: 'POST',
@@ -102,6 +129,7 @@
             'Authorization': 'Bearer ' + localStorage.getItem('access_token')
           },
           body: JSON.stringify({
+<<<<<<< HEAD
              receiver_username: account_name,
              amount: parseFloat(amount.replace(/,/g, '')),
             receiver_account_number: account_number,
@@ -141,5 +169,36 @@
 
     </script>
     <script src="{% static 'js/websocket.js' %}"></script>
+=======
+            receiver_username: account_name,
+            amount: parseFloat(amount.replace(/,/g, '')),
+            receiver_account_number: account_number,
+            sender_username: localStorage.getItem('username'),
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('message').textContent = data.message;
+          if (data.status == 200) {
+            document.getElementById('transfer-form').reset();
+            // Update balance in local storage
+            let bankAccount = localStorage.getItem('bank_account')
+            bankAccount = JSON.parse(bankAccount);
+            let amountValue = parseFloat(amount.replace(/,/g, ''))
+            bankAccount.balance = (parseFloat(bankAccount.balance) - amountValue).toFixed(2);
+            localStorage.setItem('bank_account', JSON.stringify(bankAccount));
+            document.getElementById('balance').textContent = parseFloat(bankAccount.balance).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+          }
+        })
+        .catch(error => {
+          document.getElementById('message').textContent = "Failed to send request.";
+          console.error('Error:', error);
+        });
+    });
+  </script>
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
 </body>
 </html>

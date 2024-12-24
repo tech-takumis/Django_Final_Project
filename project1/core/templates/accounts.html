@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -65,3 +66,66 @@
 <script src="{% static 'js/websocket.js' %}"></script>
 </body>
 </html>
+=======
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Accounts</title>
+    </head>
+    <body>
+        <h2>Accounts</h2>
+        <div id="message" style="color:red;">
+            {% if message %}
+               {{message}}
+            {% endif %}
+        </div>
+          {% if data %}
+            <div id="account-data">
+            {% for account in data %}
+                <p>User: {{account.user}}</p>
+                <p>Account Number: {{account.account_number}}</p>
+                <p>Balance: {{account.balance}}</p>
+                <p>Bank Name: {{account.bank_name}}</p>
+                  <hr />
+            {% endfor %}
+          </div>
+        {% endif %}
+           <div id="pagination-links">
+              {% if previous %}
+                  <a href="{% url 'account_page' %}?page={{previous}}">Previous</a>
+                {% endif %}
+                  {% if next %}
+                  <a href="{% url 'account_page' %}?page={{next}}">Next</a>
+                {% endif %}
+        </div>
+          <button type="button" id="logout-button" >Logout</button>
+             <script>
+                 document.getElementById('logout-button').addEventListener('click', function(event) {
+                        const refresh = localStorage.getItem('refresh_token')
+                         fetch('/api/logout/',{
+                                method:'POST',
+                                headers: {
+                                     'Content-Type': 'application/json',
+                                     'Authorization':'Bearer ' + localStorage.getItem('access_token')
+                                },
+                                 body:JSON.stringify({refresh:refresh})
+                            })
+                             .then(response=>response.json())
+                             .then(data=>{
+                                 if(data.message=="Logout successfully"){
+                                          localStorage.clear();
+                                        window.location.href='/login';
+                                 }
+                                  document.getElementById('message').textContent = data.message;
+                            })
+                            .catch(error=>{
+                                  document.getElementById('message').textContent = "Failed to send request.";
+                                console.error('Error:', error)
+                            });
+                     })
+            </script>
+    </body>
+    </html>
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d

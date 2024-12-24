@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 {% load static %}
+=======
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,10 +81,18 @@
                     }
                })
                .catch(error=>{
+<<<<<<< HEAD
                     console.error('Error:', error)
+=======
+                    document.getElementById('message').textContent = "Failed to send request.";
+                     console.error('Error:', error)
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
                 });
            })
     </script>
 </body>
+<<<<<<< HEAD
 <script src="{% static 'js/websocket.js' %}"></script>
+=======
+>>>>>>> 8940285a3d3aef1562ad90204fd203d9aca7388d
 </html>
