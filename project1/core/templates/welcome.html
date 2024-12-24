@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <link rel="stylesheet" href="/src/output.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
     <style>
@@ -41,12 +40,15 @@
             </div>
         </div>
         <div class="relative">
-            <img class="bg-cover rounded-b-xl " src=""alt=""/> 
+            <img class="bg-cover rounded-b-xl" src="{% static 'media/images/cat.jpg' %}" alt=""/>
             <div class="absolute top-10 left-4 md:top-12 lg:top-16 xl:top-20 md:left-6 lg:left-8 xl:left-10 inset-0">
                 <p class="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold">
                     Welcome to<br><span class="font-extrabold text-yellow-500 text-xl md:text-2xl lg:text-3xl xl:text-4xl">Paw Bank</span>
                 </p>
-                <button class="mt-2 bg-emerald-500 text-white font-semibold text-sm py-2 px-4 rounded-full hover:bg-emerald-600 hover:text-yellow-500">Get Started</button>
+                <!-- Replace the button with an anchor tag -->
+                <a href="{% url 'login_page' %}" class="mt-2 bg-emerald-500 text-white font-semibold text-sm py-2 px-4 rounded-full hover:bg-emerald-600 hover:text-yellow-500">
+                    Get Started
+                </a>
             </div>
         </div>
         
@@ -59,6 +61,5 @@
             }, 2000);
         });
     </script>
-    <script src="{% static 'media/images/cat.jpg' %}"></script>
 </body>
 </html>
