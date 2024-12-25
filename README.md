@@ -103,11 +103,11 @@ Follow these steps to set up the Paw Bank application on your local machine:
         python manage.py migrate
     ```
 8.  **Create super user**
-  ```bash
+      ```bash
         python manage.py createsuperuser
-    ```
+      ```
 9.  **Run the development server in project1 and project2:**
-
+    
     -   For `project1`:
 
        ```bash
