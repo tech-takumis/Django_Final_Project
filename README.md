@@ -122,7 +122,7 @@ Follow these steps to set up the Paw Bank application on your local machine:
        ```
 
 ```
-## Paw System architecture
+## Paw Bank System architecture
 
 
 ![Paw Bank System Architecture](https://github.com/user-attachments/assets/ea0c86ef-8aae-4da2-a8e4-0a82bf4c9165)
