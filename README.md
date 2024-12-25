@@ -2,7 +2,7 @@
 
 A Secure and Real-Time Banking Application
 
-![Paw Bank Logo (Replace with your actual logo if any)](https://placehold.co/200x200?text=Paw+Bank+Logo&font=Montserrat)
+![Paw Bank Logo (Paw Bank logo)](https://placehold.co/200x200?text=Paw+Bank+Logo&font=Montserrat)
 
 ## Overview
 
@@ -120,4 +120,8 @@ Follow these steps to set up the Paw Bank application on your local machine:
           cd ../project2
         python manage.py runserver 0.0.0.0:8001
        ```
+## Paw Bank System Architecture
+
+(!Paw Bank System Architecture[paw bank system architecture](https://github.com/user-attachments/assets/ea0c86ef-8aae-4da2-a8e4-0a82bf4c9165)
+)
 
