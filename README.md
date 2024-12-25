@@ -120,8 +120,6 @@ Follow these steps to set up the Paw Bank application on your local machine:
        cd ../project2
        python manage.py runserver 0.0.0.0:8001
        ```
-
-```
 ## Paw Bank System architecture
 
 
