@@ -32,6 +32,7 @@ This project leverages the following technologies and packages:
 -   **Security:**
     -   [PyOpenSSL](https://pypi.org/project/pyOpenSSL/) (version 24.3.0): Provides a set of python libraries that wraps openssl for ssl connections.
     -   [service-identity](https://pypi.org/project/service-identity/) (version 24.2.0):  Verifying TLS server identities.
+    -   [Cryptography](https://pypi.org/project/cryptography/) (version 44.0.0.): Cryptography’s high level symmetric encryption
 -   **Other:**
     -   [django-cors-headers](https://github.com/adamchainz/django-cors-headers) (version 4.6.0): Handles Cross-Origin Resource Sharing.
     -   [python-dotenv](https://github.com/theskumar/python-dotenv) (version 1.0.1): Manages environment variables from `.env` files.
